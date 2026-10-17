@@ -26,15 +26,16 @@ const requestSchema = z.object({
   category: z.enum(categories),
   location: z.string().trim().min(3).max(120),
   description: z.string().trim().min(10).max(2000),
-  attachment: z
-    .instanceof(File)
-    .optional()
-    .refine((file) => !file || file.size <= 5 * 1024 * 1024, {
-      message: "Attachment must be 5 MB or smaller.",
+  attachments: z
+    .array(z.instanceof(File))
+    .max(5, "Upload no more than 5 files at a time.")
+    .refine((files) => files.every((file) => file.size <= 5 * 1024 * 1024), {
+      message: "Each attachment must be 5 MB or smaller.",
     })
-    .refine((file) => !file || file.size === 0 || file.type in attachmentTypes, {
-      message: "Attachment must be a PDF, JPG, or PNG file.",
-    }),
+    .refine(
+      (files) => files.every((file) => file.type in attachmentTypes),
+      { message: "Attachments must be PDF, JPG, or PNG files." },
+    ),
 });
 
 function jsonError(message: string, status: number) {
@@ -53,14 +54,14 @@ export async function POST(request: Request) {
     return jsonError("Request data could not be read.", 400);
   }
 
-  const formFile = formData.get("attachment");
-  const attachment =
-    formFile instanceof File && formFile.size > 0 ? formFile : undefined;
+  const attachments = formData
+    .getAll("attachments")
+    .filter((value): value is File => value instanceof File && value.size > 0);
   const parsed = requestSchema.safeParse({
     category: formData.get("category"),
     location: formData.get("location"),
     description: formData.get("description"),
-    attachment,
+    attachments,
   });
 
   if (!parsed.success) {
@@ -74,13 +75,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const fileExtension = parsed.data.attachment
-    ? attachmentTypes[parsed.data.attachment.type]
-    : undefined;
-  const safeFilename = parsed.data.attachment
-    ? `${randomUUID()}.${fileExtension}`
-    : undefined;
-
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const trackingId = generateTrackingId();
     const existing = await prisma.request.findUnique({
@@ -89,19 +83,29 @@ export async function POST(request: Request) {
     });
     if (existing) continue;
 
-    let attachmentUrl: string | undefined;
-    if (parsed.data.attachment && safeFilename) {
-      const path = `${session.id}/${trackingId}/${safeFilename}`;
-      try {
-        attachmentUrl = await uploadFile(parsed.data.attachment, path);
-      } catch (error) {
-        return jsonError(
-          error instanceof Error
-            ? error.message
-            : "The attachment could not be uploaded.",
-          502,
-        );
-      }
+    let uploadedAttachments: {
+      storagePath: string;
+      fileName: string;
+      contentType: string;
+    }[];
+    try {
+      uploadedAttachments = await Promise.all(
+        parsed.data.attachments.map(async (file) => {
+          const extension = attachmentTypes[file.type];
+          const storagePath = `${session.id}/${trackingId}/${randomUUID()}.${extension}`;
+          await uploadFile(file, storagePath);
+          return {
+            storagePath,
+            fileName: file.name.replace(/[\\/\r\n\0]/g, "_").slice(0, 180),
+            contentType: file.type,
+          };
+        }),
+      );
+    } catch (error) {
+      return jsonError(
+        error instanceof Error ? error.message : "Attachments could not be uploaded.",
+        502,
+      );
     }
 
     try {
@@ -111,7 +115,7 @@ export async function POST(request: Request) {
           category: parsed.data.category,
           location: parsed.data.location,
           description: parsed.data.description,
-          attachment: attachmentUrl,
+          attachments: { create: uploadedAttachments },
           citizenId: session.id,
           status: "PENDING",
         },

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import countyCrest from "@/public/logo.png";
 import Link from "next/link";
 import { ArrowRight, ClipboardCheck, FilePlus2, Gauge } from "lucide-react";
 import { redirect } from "next/navigation";
@@ -38,7 +39,7 @@ export default async function HomePage() {
               className="size-12 object-contain"
               height={48}
               priority
-              src="/logo.png"
+              src={countyCrest}
               width={48}
             />
             <div>
@@ -46,8 +47,8 @@ export default async function HomePage() {
               <p className="text-xs text-slate-600">Public Service Portal</p>
             </div>
           </div>
-          <Link className="text-sm font-semibold text-[#0f2c52] hover:underline" href="/login">
-            Sign in
+          <Link className="text-sm font-semibold text-[#0f2c52] hover:underline" href="/login?role=CITIZEN">
+            Citizen sign in
           </Link>
         </div>
       </header>
@@ -65,20 +66,29 @@ export default async function HomePage() {
               <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600">
                 Report municipal issues — broken streetlights, water interruptions, garbage collection — and track their resolution.
               </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <div className="mt-8 grid gap-3 sm:grid-cols-2">
                 <Link
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#0f2c52] px-5 text-sm font-semibold text-white hover:bg-[#183d6b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0f2c52] focus-visible:ring-offset-2"
-                  href="/login"
+                  className="rounded-lg border border-[#0f2c52] bg-[#0f2c52] p-4 text-white transition hover:bg-[#183d6b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0f2c52] focus-visible:ring-offset-2"
+                  href="/login?role=CITIZEN"
                 >
-                  Sign In <ArrowRight aria-hidden="true" className="size-4" />
+                  <span className="flex items-center justify-between gap-2 text-sm font-semibold">
+                    Citizen sign in <ArrowRight aria-hidden="true" className="size-4" />
+                  </span>
+                  <span className="mt-1 block text-xs text-blue-100">Submit and track municipal reports</span>
                 </Link>
                 <Link
-                  className="inline-flex h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-5 text-sm font-semibold text-[#0f2c52] hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0f2c52] focus-visible:ring-offset-2"
-                  href="/track"
+                  className="rounded-lg border border-slate-300 bg-white p-4 text-[#0f2c52] transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0f2c52] focus-visible:ring-offset-2"
+                  href="/login?role=ADMIN"
                 >
-                  Track a Request
+                  <span className="flex items-center justify-between gap-2 text-sm font-semibold">
+                    Public servant / admin <ArrowRight aria-hidden="true" className="size-4" />
+                  </span>
+                  <span className="mt-1 block text-xs text-slate-600">Staff access to request administration</span>
                 </Link>
               </div>
+              <Link className="mt-4 inline-block text-sm font-medium text-[#0f2c52] underline-offset-4 hover:underline" href="/track">
+                Track a request without signing in
+              </Link>
             </div>
             <div className="hidden justify-center lg:flex">
               <div className="flex size-64 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm">
@@ -86,7 +96,7 @@ export default async function HomePage() {
                   alt="Murang’a County Government crest"
                   className="size-48 object-contain"
                   height={192}
-                  src="/logo.png"
+                  src={countyCrest}
                   width={192}
                 />
               </div>

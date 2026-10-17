@@ -84,7 +84,7 @@ export function AdminUpdateForm({
         return;
       }
 
-      toast.success("Request status updated.");
+      toast.success("Request updated");
       reset({ status: values.status, note: "" });
       router.refresh();
     } catch {

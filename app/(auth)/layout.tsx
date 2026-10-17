@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Manrope } from "next/font/google";
+import countyCrest from "@/public/logo.png";
 
 const manrope = Manrope({ subsets: ["latin"], display: "swap" });
 
@@ -16,7 +18,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             className="size-12 shrink-0 object-contain"
             height={48}
             priority
-            src="/logo.png"
+            src={countyCrest}
             width={48}
           />
           <div>
@@ -37,7 +39,13 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       </main>
 
       <footer className="px-5 py-5 text-center text-xs text-slate-500">
-        © 2026 Murang&apos;a County Government. All rights reserved.
+        <p>© 2026 Murang&apos;a County Government. All rights reserved.</p>
+        <Link
+          className="mt-2 inline-block font-medium text-[#0f2c52] underline-offset-4 hover:underline"
+          href="/track"
+        >
+          Track a request without signing in
+        </Link>
       </footer>
     </div>
   );

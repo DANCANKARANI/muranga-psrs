@@ -1,5 +1,18 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
+import { MoreHorizontal, LoaderCircle } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -28,6 +41,7 @@ interface RequestTableProps {
   showCitizen?: boolean;
   showDescription?: boolean;
   actionLabel?: string;
+  quickActions?: boolean;
 }
 
 export function RequestTable({
@@ -36,7 +50,46 @@ export function RequestTable({
   showCitizen = false,
   showDescription = false,
   actionLabel = "View",
+  quickActions = false,
 }: RequestTableProps) {
+  const router = useRouter();
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  async function quickUpdate(
+    event: React.MouseEvent,
+    requestId: string,
+    status: "IN_PROGRESS" | "RESOLVED",
+  ) {
+    event.stopPropagation();
+    setPendingId(requestId);
+    try {
+      const response = await fetch(`/api/admin/requests/${requestId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status,
+          note: "Status updated via quick action",
+        }),
+      });
+      const result: unknown = await response.json();
+      if (!response.ok) {
+        const message =
+          typeof result === "object" && result !== null && "message" in result &&
+          typeof result.message === "string"
+            ? result.message
+            : "The request could not be updated.";
+        toast.error(message);
+        return;
+      }
+      toast.success("Request updated");
+      router.refresh();
+    } catch {
+      toast.error("The request could not be updated. Please try again.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <Table>
@@ -49,12 +102,25 @@ export function RequestTable({
             {showDescription && <TableHead>Description</TableHead>}
             <TableHead>Status</TableHead>
             <TableHead>Date</TableHead>
+            {quickActions && <TableHead>Quick Actions</TableHead>}
             <TableHead className="text-right">{actionLabel}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {requests.map((request) => (
-            <TableRow key={request.id}>
+            <TableRow
+              className="cursor-pointer hover:bg-blue-50/60"
+              key={request.id}
+              onClick={() => router.push(`${detailBasePath}/${request.id}`)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  router.push(`${detailBasePath}/${request.id}`);
+                }
+              }}
+              role="link"
+              tabIndex={0}
+            >
               <TableCell className="font-mono text-xs font-medium text-[#0f2c52]">
                 {request.trackingId}
               </TableCell>
@@ -78,6 +144,42 @@ export function RequestTable({
               <TableCell className="text-slate-600">
                 {formatDate(request.createdAt)}
               </TableCell>
+              {quickActions && (
+                <TableCell onClick={(event) => event.stopPropagation()}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          aria-label={`Quick actions for ${request.trackingId}`}
+                          disabled={pendingId === request.id}
+                          size="icon-sm"
+                          variant="ghost"
+                        />
+                      }
+                    >
+                      {pendingId === request.id ? (
+                        <LoaderCircle aria-hidden="true" className="animate-spin" />
+                      ) : (
+                        <MoreHorizontal aria-hidden="true" />
+                      )}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        disabled={pendingId === request.id}
+                        onClick={(event) => void quickUpdate(event, request.id, "IN_PROGRESS")}
+                      >
+                        Mark In Progress
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={pendingId === request.id}
+                        onClick={(event) => void quickUpdate(event, request.id, "RESOLVED")}
+                      >
+                        Mark Resolved
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              )}
               <TableCell className="text-right">
                 <Link
                   aria-label={`${actionLabel} request ${request.trackingId}`}

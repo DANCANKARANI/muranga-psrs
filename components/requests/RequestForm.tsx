@@ -54,7 +54,7 @@ const responseSchema = z.object({
 export function RequestForm() {
   const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
-  const [attachment, setAttachment] = useState<File | undefined>();
+  const [attachments, setAttachments] = useState<File[]>([]);
   const {
     control,
     register,
@@ -68,17 +68,20 @@ export function RequestForm() {
 
   async function onSubmit(values: RequestFormValues) {
     setApiError(null);
-    if (attachment && attachment.size > 5 * 1024 * 1024) {
-      const message = "Attachment must be 5 MB or smaller.";
+    if (attachments.length > 5) {
+      const message = "Upload no more than 5 files at a time.";
       setApiError(message);
       toast.error(message);
       return;
     }
-    if (
-      attachment &&
-      !["application/pdf", "image/jpeg", "image/png"].includes(attachment.type)
-    ) {
-      const message = "Choose a PDF, JPG, or PNG file.";
+    if (attachments.some((file) => file.size > 5 * 1024 * 1024)) {
+      const message = "Each attachment must be 5 MB or smaller.";
+      setApiError(message);
+      toast.error(message);
+      return;
+    }
+    if (attachments.some((file) => !["application/pdf", "image/jpeg", "image/png"].includes(file.type))) {
+      const message = "Choose PDF, JPG, or PNG files only.";
       setApiError(message);
       toast.error(message);
       return;
@@ -88,7 +91,7 @@ export function RequestForm() {
     data.set("category", values.category);
     data.set("location", values.location);
     data.set("description", values.description);
-    if (attachment?.size) data.set("attachment", attachment);
+    attachments.forEach((file) => data.append("attachments", file));
 
     try {
       const response = await fetch("/api/requests", {
@@ -178,18 +181,27 @@ export function RequestForm() {
         </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="attachment">Photo or supporting document (optional)</Label>
+        <Label htmlFor="attachments">Photos or supporting documents (optional)</Label>
         <Input
-          id="attachment"
+          id="attachments"
           type="file"
           accept="application/pdf,image/jpeg,image/png"
+          multiple
           onChange={(event) => {
-            const file = event.currentTarget.files?.[0];
-            setAttachment(file);
+            setAttachments(Array.from(event.currentTarget.files ?? []));
             setApiError(null);
           }}
         />
-        <p className="text-xs text-slate-500">PDF, JPG, or PNG · max 5 MB</p>
+        <p className="text-xs text-slate-500">Select up to 5 PDF, JPG, or PNG files · max 5 MB each</p>
+        {attachments.length > 0 && (
+          <ul aria-label="Selected attachments" className="space-y-1 text-sm text-slate-600">
+            {attachments.map((file, index) => (
+              <li className="truncate" key={`${file.name}-${file.lastModified}-${index}`}>
+                {file.name}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       <Button
         className="h-11 w-full bg-[#0f2c52] text-white hover:bg-[#183d6b]"

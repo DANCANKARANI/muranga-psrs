@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 
 const registrationSchema = z
@@ -73,18 +74,20 @@ export default function RegisterPage() {
       const result = registrationResponseSchema.safeParse(await response.json());
 
       if (!response.ok || !result.success || !result.data.success) {
-        setApiError(
-          result.success
-            ? result.data.message ?? "Unable to create your account. Please try again."
-            : "Unable to create your account. Please try again.",
-        );
+        const message = result.success
+          ? result.data.message ?? "Unable to create your account. Please try again."
+          : "Unable to create your account. Please try again.";
+        setApiError(message);
+        toast.error(message);
         return;
       }
 
+      toast.success("Your account has been created.");
       router.push("/dashboard");
       router.refresh();
     } catch {
       setApiError("We could not connect to the service. Please try again.");
+      toast.error("We could not connect to the service. Please try again.");
     }
   }
 

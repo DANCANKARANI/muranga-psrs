@@ -1,14 +1,17 @@
 import Link from "next/link";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AdminUpdateForm } from "@/components/admin/AdminUpdateForm";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { AttachmentLinks } from "@/components/shared/AttachmentLinks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { getSession } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
+
+export const instant = false;
 
 export default async function AdminRequestDetailPage({
   params,
@@ -24,6 +27,10 @@ export default async function AdminRequestDetailPage({
     include: {
       citizen: { select: { id: true, name: true, email: true } },
       updates: { orderBy: { createdAt: "asc" } },
+      attachments: {
+        orderBy: { createdAt: "asc" },
+        select: { id: true, fileName: true },
+      },
     },
   });
   if (!request) notFound();
@@ -69,15 +76,11 @@ export default async function AdminRequestDetailPage({
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Submitted</p>
                   <p className="mt-1 text-sm font-medium text-slate-900">{formatDate(request.createdAt)}</p>
                 </div>
-                {request.attachment && (
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Attachment</p>
-                    <a className="mt-1 inline-flex items-center gap-2 text-sm font-medium text-[#0f2c52] underline-offset-4 hover:underline" href={request.attachment} rel="noreferrer" target="_blank">
-                      <FileText aria-hidden="true" className="size-4" />
-                      View supporting document
-                    </a>
-                  </div>
-                )}
+                <AttachmentLinks
+                  requestId={request.id}
+                  attachments={request.attachments}
+                  hasLegacyAttachment={Boolean(request.attachment)}
+                />
               </div>
               <Separator />
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">

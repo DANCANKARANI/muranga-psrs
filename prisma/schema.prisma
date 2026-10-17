@@ -13,9 +13,24 @@ model User {
   name      String
   email     String    @unique
   password  String
+  phone     String?
   role      Role      @default(CITIZEN)
   requests  Request[]
+  notifications Notification[]
   createdAt DateTime  @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead, createdAt])
 }
 
 enum Role {
@@ -34,11 +49,24 @@ model Request {
   citizenId   String
   citizen     User            @relation(fields: [citizenId], references: [id])
   updates     RequestUpdate[]
+  attachments RequestAttachment[]
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
   @@index([citizenId, createdAt])
   @@index([status, createdAt])
+}
+
+model RequestAttachment {
+  id          String   @id @default(uuid())
+  requestId   String
+  request     Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  storagePath String   @unique
+  fileName    String
+  contentType String
+  createdAt   DateTime @default(now())
+
+  @@index([requestId, createdAt])
 }
 
 enum Status {

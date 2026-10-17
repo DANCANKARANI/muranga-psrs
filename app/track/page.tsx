@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import countyCrest from "@/public/logo.png";
 import Link from "next/link";
 import { Search, ArrowLeft } from "lucide-react";
 import { useState, type FormEvent } from "react";
@@ -55,7 +56,7 @@ export default function TrackRequestPage() {
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex h-16 max-w-5xl items-center gap-3 px-5 sm:px-8">
-          <Image alt="Murang’a County Government crest" className="size-10 object-contain" height={40} src="/logo.png" width={40} />
+          <Image alt="Murang’a County Government crest" className="size-10 object-contain" height={40} src={countyCrest} />
           <div>
             <p className="text-sm font-bold text-[#0f2c52]">Murang&apos;a County</p>
             <p className="text-xs text-slate-600">Public Service Portal</p>

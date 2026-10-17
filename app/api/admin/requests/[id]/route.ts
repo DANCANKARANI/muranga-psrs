@@ -44,11 +44,11 @@ export async function PATCH(
     );
   }
 
-  const exists = await prisma.request.findUnique({
+  const existingRequest = await prisma.request.findUnique({
     where: { id },
-    select: { id: true },
+    select: { id: true, citizenId: true, trackingId: true },
   });
-  if (!exists) return jsonError("Request not found.", 404);
+  if (!existingRequest) return jsonError("Request not found.", 404);
 
   const updated = await prisma.$transaction(async (transaction) => {
     await transaction.request.update({
@@ -61,6 +61,14 @@ export async function PATCH(
         status: parsed.data.status,
         note: parsed.data.note,
         adminName: session.name,
+      },
+    });
+    await transaction.notification.create({
+      data: {
+        userId: existingRequest.citizenId,
+        title: "Request Updated",
+        message: `Your request ${existingRequest.trackingId} is now ${parsed.data.status.replaceAll("_", " ").toLowerCase()}.`,
+        link: `/dashboard/requests/${id}`,
       },
     });
 

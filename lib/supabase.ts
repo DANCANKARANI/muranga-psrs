@@ -21,10 +21,14 @@ function getSupabaseAdmin() {
   });
 }
 
-export async function uploadFile(file: File, path: string): Promise<string> {
+function validateStoragePath(path: string): void {
   if (!path.trim() || path.startsWith("/") || path.split("/").includes("..")) {
     throw new Error("A valid storage path is required.");
   }
+}
+
+export async function uploadFile(file: File, path: string): Promise<string> {
+  validateStoragePath(path);
 
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
@@ -38,9 +42,18 @@ export async function uploadFile(file: File, path: string): Promise<string> {
     throw new Error(`Attachment upload failed: ${error.message}`);
   }
 
-  const { data: publicUrl } = supabase
-    .storage.from(BUCKET_NAME)
-    .getPublicUrl(data.path);
+  return data.path;
+}
 
-  return publicUrl.publicUrl;
+export async function downloadFile(path: string): Promise<Blob> {
+  validateStoragePath(path);
+  const { data, error } = await getSupabaseAdmin()
+    .storage.from(BUCKET_NAME)
+    .download(path);
+
+  if (error) {
+    throw new Error(`Attachment download failed: ${error.message}`);
+  }
+
+  return data;
 }
