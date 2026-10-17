@@ -1,0 +1,60 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  name      String
+  email     String    @unique
+  password  String
+  role      Role      @default(CITIZEN)
+  requests  Request[]
+  createdAt DateTime  @default(now())
+}
+
+enum Role {
+  CITIZEN
+  ADMIN
+}
+
+model Request {
+  id          String          @id @default(uuid())
+  trackingId  String          @unique
+  category    String
+  location    String
+  description String
+  status      Status          @default(PENDING)
+  attachment  String?
+  citizenId   String
+  citizen     User            @relation(fields: [citizenId], references: [id])
+  updates     RequestUpdate[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([citizenId, createdAt])
+  @@index([status, createdAt])
+}
+
+enum Status {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+}
+
+model RequestUpdate {
+  id        String   @id @default(uuid())
+  requestId String
+  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  status    Status
+  note      String
+  adminName String
+  createdAt DateTime @default(now())
+
+  @@index([requestId, createdAt])
+}
