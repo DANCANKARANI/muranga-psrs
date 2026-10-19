@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { truncate } from "@/lib/utils";
+import { toPublicTracking } from "@/lib/public-tracking";
 
 export async function GET(
   _request: Request,
@@ -11,12 +11,12 @@ export async function GET(
     select: {
       trackingId: true,
       category: true,
-      location: true,
-      description: true,
       status: true,
       createdAt: true,
       updates: {
-        select: { status: true, note: true, createdAt: true },
+        // Administrative notes can contain personal or operational details.
+        // Public tracking exposes status and date only.
+        select: { status: true, createdAt: true },
         orderBy: { createdAt: "asc" },
       },
     },
@@ -26,8 +26,10 @@ export async function GET(
     return Response.json({ success: false, message: "No request found." }, { status: 404 });
   }
 
-  return Response.json({
-    ...request,
-    description: truncate(request.description, 500),
+  return Response.json(toPublicTracking(request), {
+    headers: {
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
+    },
   });
 }

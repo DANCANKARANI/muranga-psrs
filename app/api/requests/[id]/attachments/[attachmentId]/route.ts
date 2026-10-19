@@ -28,15 +28,15 @@ function legacyStoragePath(urlValue: string): string | null {
   }
 }
 
-function contentDisposition(fileName: string): string {
+function contentDisposition(fileName: string, inline = false): string {
   const fallback = fileName
     .replace(/[^\x20-\x7E]|["\\;]/g, "_")
     .slice(0, 150) || "attachment";
-  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+  return `${inline ? "inline" : "attachment"}; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }
 
 export async function GET(
-  _request: Request,
+  incomingRequest: Request,
   { params }: { params: Promise<{ id: string; attachmentId: string }> },
 ) {
   const session = await getSession();
@@ -88,10 +88,11 @@ export async function GET(
 
   try {
     const file = await downloadFile(storagePath);
+    const viewInline = new URL(incomingRequest.url).searchParams.get("view") === "1" && contentType.startsWith("image/");
     return new Response(file.stream(), {
       headers: {
         "Content-Type": contentType,
-        "Content-Disposition": contentDisposition(fileName),
+        "Content-Disposition": contentDisposition(fileName, viewInline),
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
       },

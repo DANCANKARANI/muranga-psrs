@@ -21,6 +21,10 @@ export default async function DashboardPage() {
   const open = requests.filter((request) =>
     ["PENDING", "IN_PROGRESS"].includes(request.status),
   ).length;
+  const now = new Date();
+  const overdue = requests.filter(
+    (request) => request.status !== "RESOLVED" && request.slaDeadline.getTime() < now.getTime(),
+  ).length;
   const resolved = requests.filter((request) => request.status === "RESOLVED").length;
 
   return (
@@ -46,7 +50,14 @@ export default async function DashboardPage() {
 
       <section aria-label="Request summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard label="Total" value={requests.length} icon={ClipboardList} />
-        <StatCard label="Open" value={open} icon={Clock3} tone="amber" />
+        <StatCard
+          label="Open"
+          value={open}
+          icon={Clock3}
+          tone="amber"
+          description={`You have ${overdue} overdue ${overdue === 1 ? "request" : "requests"}`}
+          descriptionTone={overdue ? "danger" : "default"}
+        />
         <StatCard label="Resolved" value={resolved} icon={CheckCircle2} tone="green" />
       </section>
 

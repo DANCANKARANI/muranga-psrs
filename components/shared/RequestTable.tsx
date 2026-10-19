@@ -22,6 +22,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge, type RequestStatus } from "@/components/shared/StatusBadge";
+import { PriorityBadge, type RequestPriority } from "@/components/shared/PriorityBadge";
+import { UpvoteButton } from "@/components/requests/UpvoteButton";
 import { formatDate, truncate } from "@/lib/utils";
 
 export interface RequestTableItem {
@@ -31,6 +33,11 @@ export interface RequestTableItem {
   location: string;
   description?: string;
   status: RequestStatus;
+  priority?: RequestPriority | string;
+  upvotes?: number;
+  hasUpvoted?: boolean;
+  isOwner?: boolean;
+  overdue?: boolean;
   createdAt: Date;
   citizenName?: string;
 }
@@ -42,6 +49,10 @@ interface RequestTableProps {
   showDescription?: boolean;
   actionLabel?: string;
   quickActions?: boolean;
+  showPriority?: boolean;
+  showOverdue?: boolean;
+  showUpvotes?: boolean;
+  allowUpvotes?: boolean;
 }
 
 export function RequestTable({
@@ -51,6 +62,10 @@ export function RequestTable({
   showDescription = false,
   actionLabel = "View",
   quickActions = false,
+  showPriority = false,
+  showOverdue = false,
+  showUpvotes = false,
+  allowUpvotes = false,
 }: RequestTableProps) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -92,7 +107,7 @@ export function RequestTable({
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <Table>
+      <Table className="min-w-max">
         <TableHeader className="bg-slate-50">
           <TableRow>
             <TableHead>Tracking ID</TableHead>
@@ -100,6 +115,8 @@ export function RequestTable({
             <TableHead>Category</TableHead>
             <TableHead>Location</TableHead>
             {showDescription && <TableHead>Description</TableHead>}
+            {showPriority && <TableHead>Priority</TableHead>}
+            {showUpvotes && <TableHead>Upvotes</TableHead>}
             <TableHead>Status</TableHead>
             <TableHead>Date</TableHead>
             {quickActions && <TableHead>Quick Actions</TableHead>}
@@ -134,12 +151,29 @@ export function RequestTable({
                 {request.location}
               </TableCell>
               {showDescription && (
-                <TableCell className="max-w-64 text-slate-600">
-                  {truncate(request.description ?? "")}
+                <TableCell className="w-64 max-w-64 text-slate-600">
+                  <span className="block max-w-64 truncate" title={request.description ?? ""}>
+                    {truncate(request.description ?? "")}
+                  </span>
+                </TableCell>
+              )}
+              {showPriority && <TableCell>{request.priority ? <PriorityBadge priority={(["LOW", "NORMAL", "HIGH", "CRITICAL"].includes(request.priority) ? request.priority : "NORMAL") as RequestPriority} /> : "—"}</TableCell>}
+              {showUpvotes && (
+                <TableCell onClick={(event) => event.stopPropagation()}>
+                  {allowUpvotes ? (
+                    <UpvoteButton requestId={request.id} initialCount={request.upvotes ?? 0} initiallyUpvoted={request.hasUpvoted ?? false} isOwner={request.isOwner ?? false} />
+                  ) : (
+                    <span className="font-semibold tabular-nums text-slate-700">{request.upvotes ?? 0}</span>
+                  )}
                 </TableCell>
               )}
               <TableCell>
-                <StatusBadge status={request.status} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge status={request.status} />
+                  {showOverdue && request.overdue && (
+                    <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700">OVERDUE</span>
+                  )}
+                </div>
               </TableCell>
               <TableCell className="text-slate-600">
                 {formatDate(request.createdAt)}

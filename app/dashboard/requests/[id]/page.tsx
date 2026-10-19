@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { forbidden, notFound, redirect } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PriorityBadge, type RequestPriority } from "@/components/shared/PriorityBadge";
 import { AttachmentLinks } from "@/components/shared/AttachmentLinks";
+import { UpvoteButton } from "@/components/requests/UpvoteButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -14,23 +16,28 @@ export const instant = false;
 
 export default async function CitizenRequestDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ submitted?: string | string[] }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role !== "CITIZEN") redirect("/admin");
 
-  const { id } = await params;
+  const [{ id }, query] = await Promise.all([params, searchParams]);
+  const submittedValue = Array.isArray(query.submitted) ? query.submitted[0] : query.submitted;
+  const justSubmitted = submittedValue === "1";
   const request = await prisma.request.findUnique({
     where: { id },
     include: {
-      updates: { orderBy: { createdAt: "asc" } },
-      attachments: { orderBy: { createdAt: "asc" }, select: { id: true, fileName: true } },
+      updates: { where: { isInternal: false }, orderBy: { createdAt: "asc" } },
+      attachments: { orderBy: { createdAt: "asc" }, select: { id: true, fileName: true, contentType: true } },
     },
   });
   if (!request) notFound();
   if (request.citizenId !== session.id) forbidden();
+  const overdue = request.status !== "RESOLVED" && new Date().getTime() > request.slaDeadline.getTime();
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -45,8 +52,12 @@ export default async function CitizenRequestDetailPage({
             {request.trackingId}
           </h1>
         </div>
-        <StatusBadge status={request.status} />
+        <div className="flex flex-wrap items-center gap-2"><StatusBadge status={request.status} /><PriorityBadge priority={request.priority as RequestPriority} /><UpvoteButton requestId={request.id} initialCount={request.upvotes} initiallyUpvoted={request.upvotedBy.includes(session.id)} isOwner={request.citizenId === session.id} /></div>
       </div>
+
+      {justSubmitted && <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900" role="status"><p className="font-semibold">Request submitted successfully</p><p className="mt-1">Your tracking number is <span className="font-mono font-bold">{request.trackingId}</span>. You can follow updates and support this report here.</p></div>}
+
+      {overdue && <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert"><AlertTriangle aria-hidden="true" className="mt-0.5 size-4 shrink-0" /><span>This request has exceeded the 3-day resolution SLA.</span></div>}
 
       <Card>
         <CardHeader>
@@ -59,6 +70,10 @@ export default async function CitizenRequestDetailPage({
               <p className="mt-1 text-sm font-medium text-slate-900">{request.category}</p>
             </div>
             <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Priority</p>
+              <div className="mt-1"><PriorityBadge priority={request.priority as RequestPriority} /></div>
+            </div>
+            <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Location</p>
               <p className="mt-1 text-sm font-medium text-slate-900">{request.location}</p>
             </div>
@@ -66,11 +81,16 @@ export default async function CitizenRequestDetailPage({
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Submitted</p>
               <p className="mt-1 text-sm font-medium text-slate-900">{formatDate(request.createdAt)}</p>
             </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Resolution target</p>
+              <p className="mt-1 text-sm font-medium text-slate-900">{formatDate(request.slaDeadline)}</p>
+            </div>
           </div>
           <AttachmentLinks
             requestId={request.id}
             attachments={request.attachments}
             hasLegacyAttachment={Boolean(request.attachment)}
+            legacyFileName={request.attachment}
           />
           <Separator />
           <div>

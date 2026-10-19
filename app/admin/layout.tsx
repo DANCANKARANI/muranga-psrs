@@ -7,7 +7,10 @@ import { getSession } from "@/lib/auth";
 export const instant = false;
 
 const navigation: SidebarItem[] = [
-  { label: "All requests", href: "/admin", icon: "requests" },
+  { label: "Overview", href: "/admin", icon: "dashboard" },
+  { label: "All requests", href: "/admin/requests", icon: "list" },
+  { label: "Analytics", href: "/admin/analytics", icon: "analytics" },
+  { label: "Settings", href: "/admin/settings", icon: "settings" },
 ];
 
 export default async function AdminLayout({

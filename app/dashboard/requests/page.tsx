@@ -1,10 +1,12 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { ClipboardList } from "lucide-react";
 import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { RequestFilters } from "@/components/shared/RequestFilters";
 import { RequestTable } from "@/components/shared/RequestTable";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -44,18 +46,41 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
         : {}),
     },
     orderBy: { createdAt: "desc" },
-    include: { updates: { orderBy: { createdAt: "asc" } } },
+    select: {
+      id: true,
+      citizenId: true,
+      trackingId: true,
+      category: true,
+      location: true,
+      description: true,
+      status: true,
+      priority: true,
+      upvotes: true,
+      upvotedBy: true,
+      slaDeadline: true,
+      createdAt: true,
+    },
   });
+  const now = new Date().getTime();
+  const tableRequests = requests.map(({ upvotedBy, citizenId, ...request }) => ({
+    ...request,
+    isOwner: citizenId === session.id,
+    hasUpvoted: upvotedBy.includes(session.id),
+    overdue: request.status !== "RESOLVED" && request.slaDeadline.getTime() < now,
+  }));
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-[#0f2c52]">
-          My requests
-        </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Search your reports by tracking number, location, or description, or filter by status.
-        </p>
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-[#0f2c52]">
+            My requests
+          </h1>
+          <p className="mt-2 text-sm text-slate-600">
+            Your own requests are shown here. Visit Community Requests to support issues reported by other residents.
+          </p>
+        </div>
+        <Button nativeButton={false} render={<Link href="/dashboard/community" />} variant="outline">Explore community requests</Button>
       </div>
       <Suspense fallback={<Skeleton className="h-10 w-full sm:w-96" />}>
         <RequestFilters />
@@ -69,7 +94,7 @@ export default async function RequestsPage({ searchParams }: RequestsPageProps) 
           actionLabel="Submit a request"
         />
       ) : (
-          <RequestTable requests={requests} showDescription />
+          <RequestTable requests={tableRequests} showDescription showUpvotes allowUpvotes showOverdue />
       )}
     </div>
   );

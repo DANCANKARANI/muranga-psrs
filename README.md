@@ -2,31 +2,9 @@
 
 A secure portal for Murang'a County residents to report municipal service issues and track their resolution.
 
-## Demo Credentials
+## Demo Accounts
 
-| Role | Email | Password |
-| --- | --- | --- |
-| Admin | `admin@muranga.go.ke` | `Demo1234!` |
-| Citizen | `citizen@muranga.go.ke` | `Demo1234!` |
-
-Log in at `/login`; the system routes you to the correct dashboard based on role.
-
-## Live Demo
-
-[your-vercel-url]
-
-## Screenshots
-
-Add screenshots to `docs/screenshots/` and update these paths when available.
-
-| Screen | Screenshot |
-| --- | --- |
-| Landing page | `docs/screenshots/landing.png` |
-| Citizen dashboard | `docs/screenshots/citizen-dashboard.png` |
-| New request | `docs/screenshots/new-request.png` |
-| Admin dashboard | `docs/screenshots/admin-dashboard.png` |
-| Request detail | `docs/screenshots/request-detail.png` |
-| Public tracking | `docs/screenshots/public-track.png` |
+Demo accounts are not created by default. For a local interview/demo environment, set `DEMO_SEED_ENABLED=true` and provide a unique `DEMO_ACCOUNT_PASSWORD` of at least 12 characters in `.env`, then run `npx prisma db seed`. This seed is blocked in production. The accounts are `admin@muranga.go.ke` and `citizen@muranga.go.ke`; both use the configured demo password. Disable/remove them before using a shared or production database.
 
 ## Features
 
@@ -34,20 +12,22 @@ Add screenshots to `docs/screenshots/` and update these paths when available.
 
 - Register and sign in using a secure HttpOnly session cookie.
 - Report municipal issues across streetlight, water, garbage collection, roads, drainage, and other categories.
-- Include the issue location, a description, and up to five supporting files.
-- Review reports, status, timeline updates, and authorized attachment downloads.
+- Set a Low, Normal, High, or Critical priority and include the issue location, a description, and up to five supporting files.
+- Review reports, status, timeline updates, image previews, and authorized attachment downloads.
+- See which open requests are overdue by more than three days.
 
 ### Admin
 
+- Monitor totals, category and status charts, priority-sorted reports, a 24-hour pending queue, and overdue cases.
+- Review live case activity, search by tracking ID/citizen/location, and configure county contact details and the default SLA.
 - View all reports and citizen details.
 - Filter reports by status and inspect report timelines.
 - Update status and add an administrative note.
-- Review totals, open/resolved counts, status distribution, and resolution rate.
 
 ### Public
 
 - Track a report by its tracking ID without signing in.
-- Read public status updates without exposing citizen identity or attachment URLs.
+- Read its category and status timeline without exposing citizen identity, exact location, report description, admin notes, or attachment URLs.
 
 ## Tech Stack
 
@@ -68,7 +48,6 @@ flowchart LR
     Prisma --> DB[(Supabase PostgreSQL)]
     Routes --> Storage[(Supabase Storage)]
 ```
-
 ## Database Schema
 
 ```mermaid
@@ -112,22 +91,24 @@ erDiagram
 
 1. Clone the repository and enter its directory.
 2. Install packages with `npm install`.
-3. Create a local `.env` file and fill in the database URLs, Supabase keys, and a strong `JWT_SECRET`. The `.env.example` template was removed from this repository; use the Environment Variables table below as your checklist. Never commit `.env`.
-4. Create a public Supabase Storage bucket named `request-attachments`.
-5. Apply the Prisma schema with `npx prisma db push`.
-6. Seed demo accounts with `npx prisma db seed`.
+3. Copy `.env.example` to `.env`, then set the database URLs, Supabase credentials, and a random `JWT_SECRET` (at least 32 bytes; `openssl rand -base64 48`). Never commit `.env`.
+4. Create a **private** Supabase Storage bucket named `request-attachments`. The server streams files through an authenticated route.
+5. Apply checked-in migrations with `npx prisma migrate deploy`. After pulling schema updates, regenerate the Prisma client with `npx prisma generate`.
+6. To create local demo users, set `DEMO_SEED_ENABLED=true` and a unique `DEMO_ACCOUNT_PASSWORD`, then run `npm run db:seed`. Do not use demo users or passwords in production.
 7. Start the application with `npm run dev` and visit `http://localhost:3000`.
 
 ## Environment Variables
 
 | Variable | Description |
 | --- | --- |
-| `DATABASE_URL` | Supabase transaction-pooler URL for application runtime. |
+| `DATABASE_URL` | Supabase transaction-pooler URL for runtime. For a long-running Next.js app, use a small pool such as `connection_limit=5&pool_timeout=30` to handle concurrent page/API requests. |
 | `DIRECT_URL` | Supabase direct/session-pooler URL for Prisma schema operations. |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL used by the server storage client. |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase publishable/anonymous key. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only key for privileged Storage operations; never expose it in client code. |
 | `JWT_SECRET` | Random secret of at least 32 bytes used to sign session tokens. |
+| `DEMO_SEED_ENABLED` | Set to `true` only for non-production demo databases. Defaults to disabled. |
+| `DEMO_ACCOUNT_PASSWORD` | Unique password (12+ characters) used only when explicitly seeding demo users. |
 
 Do not commit `.env` or production credentials.
 
@@ -141,11 +122,18 @@ Public registration always creates a `CITIZEN`. To promote a user manually, open
 
 ## Deployment
 
-1. Create a Supabase project and configure the `request-attachments` bucket.
+1. Create a Supabase project and configure the private `request-attachments` bucket.
 2. In Vercel, configure `DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `JWT_SECRET` for the appropriate environments.
-3. Before the first production request, run `npx prisma db push` against the production database.
-4. Seed initial accounts as needed with `npx prisma db seed`, then deploy the application through Vercel.
+3. Before the first production request, run `npx prisma migrate deploy` against the production database.
+4. Provision the first administrator through a controlled database/operations process; never run the demo seed in production.
 5. Use a new, unique `JWT_SECRET` in production and restrict access to the Supabase service-role key.
+6. Configure a production email provider before offering account recovery or email alerts; those delivery flows are not implemented in this demo.
+7. Add a shared rate-limit store at the hosting edge before exposing registration, login, or public tracking to untrusted high-volume traffic. In-memory limits are not reliable across serverless instances.
+8. Set up database backups, storage retention, and deployment monitoring with the service operators before handling real citizen reports.
+
+## Quality Checks
+
+Run `npm run lint`, `npm run typecheck`, and `npm test` before submitting changes. The GitHub Actions workflow runs the same checks for pushes to `main`/`master` and pull requests. Tests currently cover the public tracking response privacy boundary; this is a compact interview project, so broader API and browser end-to-end coverage remains a useful next step.
 
 ## Project Structure
 
@@ -165,7 +153,3 @@ components/
 lib/                  Authentication, Prisma, Supabase, and utilities
 prisma/               Schema and demo seed script
 ```
-
-## Author
-
-Add project author name and contact details here.

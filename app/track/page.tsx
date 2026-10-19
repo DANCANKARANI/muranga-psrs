@@ -16,11 +16,9 @@ import { formatDate } from "@/lib/utils";
 interface TrackedRequest {
   trackingId: string;
   category: string;
-  location: string;
-  description: string;
   status: RequestStatus;
   createdAt: string;
-  updates: { status: RequestStatus; note: string; createdAt: string }[];
+  updates: { status: RequestStatus; createdAt: string }[];
 }
 
 export default function TrackRequestPage() {
@@ -106,16 +104,12 @@ export default function TrackRequestPage() {
             <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <CardTitle className="font-mono text-xl">{trackedRequest.trackingId}</CardTitle>
-                <p className="mt-2 text-sm text-slate-600">{trackedRequest.category} · {trackedRequest.location}</p>
+                <p className="mt-2 text-sm text-slate-600">{trackedRequest.category}</p>
                 <p className="mt-1 text-sm text-slate-600">Submitted {formatDate(new Date(trackedRequest.createdAt))}</p>
               </div>
               <StatusBadge status={trackedRequest.status} />
             </CardHeader>
             <CardContent>
-              <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <h2 className="text-sm font-semibold text-slate-900">Issue description</h2>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{trackedRequest.description}</p>
-              </div>
               <h2 className="mb-4 text-base font-semibold text-slate-900">Progress timeline</h2>
               {trackedRequest.updates.length === 0 ? (
                 <p className="text-sm text-slate-600">Your report has been received and is awaiting review.</p>
@@ -130,7 +124,7 @@ export default function TrackRequestPage() {
                           <StatusBadge status={update.status} />
                           <time className="text-xs text-slate-500" dateTime={update.createdAt}>{formatDate(new Date(update.createdAt))}</time>
                         </div>
-                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{update.note}</p>
+                        <p className="mt-2 text-sm leading-6 text-slate-700">Status updated by the service team.</p>
                       </div>
                     </li>
                   ))}

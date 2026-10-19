@@ -34,9 +34,10 @@ const statusLabels: Record<RequestStatus, string> = {
 const updateSchema = z.object({
   status: z.enum(statuses),
   note: z.string().trim().min(3, "Enter at least 3 characters.").max(500),
+  isInternal: z.boolean().default(false),
 });
 
-type UpdateValues = z.infer<typeof updateSchema>;
+type UpdateValues = z.output<typeof updateSchema>;
 
 const responseSchema = z.object({
   success: z.boolean(),
@@ -60,9 +61,9 @@ export function AdminUpdateForm({
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
-  } = useForm<UpdateValues>({
+  } = useForm<z.input<typeof updateSchema>, unknown, UpdateValues>({
     resolver: zodResolver(updateSchema),
-    defaultValues: { status: currentStatus, note: "" },
+    defaultValues: { status: currentStatus, note: "", isInternal: false },
   });
 
   async function onSubmit(values: UpdateValues) {
@@ -85,7 +86,7 @@ export function AdminUpdateForm({
       }
 
       toast.success("Request updated");
-      reset({ status: values.status, note: "" });
+      reset({ status: values.status, note: "", isInternal: false });
       router.refresh();
     } catch {
       setRequestError("The service could not be reached. Please try again.");
@@ -137,6 +138,14 @@ export function AdminUpdateForm({
           <p className="text-sm text-red-600">{errors.note.message}</p>
         )}
       </div>
+      <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-sm">
+        <Controller
+          control={control}
+          name="isInternal"
+          render={({ field }) => <input checked={field.value} className="mt-0.5 size-4 accent-[#0f2c52]" name={field.name} onBlur={field.onBlur} onChange={field.onChange} ref={field.ref} type="checkbox" />}
+        />
+        <span><span className="block font-semibold text-slate-900">Internal Note (Hidden from Citizen)</span><span className="mt-0.5 block text-xs text-slate-600">Visible to administrators only.</span></span>
+      </label>
       <Button
         className="w-full bg-[#0f2c52] text-white hover:bg-[#183d6b]"
         disabled={isSubmitting}

@@ -6,6 +6,8 @@ interface StatCardProps {
   value: number;
   icon: LucideIcon;
   tone?: "navy" | "amber" | "green" | "red" | "slate";
+  description?: string;
+  descriptionTone?: "default" | "danger";
 }
 
 const toneClasses = {
@@ -16,7 +18,7 @@ const toneClasses = {
   slate: "bg-slate-100 text-slate-700",
 } as const;
 
-export function StatCard({ label, value, icon: Icon, tone = "navy" }: StatCardProps) {
+export function StatCard({ label, value, icon: Icon, tone = "navy", description, descriptionTone = "default" }: StatCardProps) {
   return (
     <Card className="shadow-none">
       <CardContent className="flex items-center justify-between gap-3 p-4 sm:p-5">
@@ -25,6 +27,7 @@ export function StatCard({ label, value, icon: Icon, tone = "navy" }: StatCardPr
           <p className="mt-1 text-2xl font-bold tabular-nums text-slate-950">
             {value}
           </p>
+          {description && <p className={`mt-1 text-xs ${descriptionTone === "danger" ? "font-medium text-red-700" : "text-slate-500"}`}>{description}</p>}
         </div>
         <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${toneClasses[tone]}`}>
           <Icon aria-hidden="true" className="size-5" />

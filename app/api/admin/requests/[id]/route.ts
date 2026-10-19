@@ -10,6 +10,7 @@ const updateSchema = z.object({
     "RESOLVED",
   ]),
   note: z.string().trim().min(3).max(500),
+  isInternal: z.boolean().default(false),
 });
 
 function jsonError(message: string, status: number) {
@@ -46,7 +47,7 @@ export async function PATCH(
 
   const existingRequest = await prisma.request.findUnique({
     where: { id },
-    select: { id: true, citizenId: true, trackingId: true },
+    select: { id: true, citizenId: true, trackingId: true, status: true },
   });
   if (!existingRequest) return jsonError("Request not found.", 404);
 
@@ -60,17 +61,23 @@ export async function PATCH(
         requestId: id,
         status: parsed.data.status,
         note: parsed.data.note,
+        isInternal: parsed.data.isInternal,
         adminName: session.name,
       },
     });
-    await transaction.notification.create({
-      data: {
-        userId: existingRequest.citizenId,
-        title: "Request Updated",
-        message: `Your request ${existingRequest.trackingId} is now ${parsed.data.status.replaceAll("_", " ").toLowerCase()}.`,
-        link: `/dashboard/requests/${id}`,
-      },
-    });
+    const statusChanged = existingRequest.status !== parsed.data.status;
+    if (statusChanged || !parsed.data.isInternal) {
+      await transaction.notification.create({
+        data: {
+          userId: existingRequest.citizenId,
+          title: statusChanged ? "Request status updated" : "New request update",
+          message: statusChanged
+            ? `Your request ${existingRequest.trackingId} is now ${parsed.data.status.replaceAll("_", " ").toLowerCase()}.`
+            : `A new update was added to request ${existingRequest.trackingId}.`,
+          link: `/dashboard/requests/${id}`,
+        },
+      });
+    }
 
     return transaction.request.findUniqueOrThrow({
       where: { id },

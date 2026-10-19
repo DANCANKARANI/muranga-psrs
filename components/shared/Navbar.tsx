@@ -2,19 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, Search, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 import type { UserRole } from "@/lib/auth-token";
 
@@ -64,34 +58,33 @@ export function Navbar({ user, onMenuClick, menuOpen = false }: NavbarProps) {
           </span>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
-          {user.role === "CITIZEN" && <NotificationBell />}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={<Button className="max-w-52 gap-2 text-slate-700" variant="ghost" />}
-            >
-              <span className="hidden max-w-36 truncate text-sm font-medium sm:inline">
-                {user.name}
-              </span>
-              <Badge
-                variant="outline"
-                className={
-                  user.role === "ADMIN"
-                    ? "border-amber-200 bg-amber-100 text-amber-800"
-                    : "border-blue-200 bg-blue-50 text-[#0f2c52]"
-                }
+          {user.role === "ADMIN" && (
+            <form action="/admin/requests" className="hidden min-w-0 flex-1 items-center md:flex">
+              <div className="relative mx-auto w-full max-w-xl">
+                <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <Input aria-label="Search admin requests" className="h-9 w-full bg-slate-50 pl-9" name="q" placeholder="Search Tracking ID, Citizen, Location..." />
+              </div>
+            </form>
+          )}
+          <NotificationBell />
+          {user.role === "CITIZEN" ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<Button className="max-w-52 gap-2 text-slate-700" variant="ghost" />}
               >
-                {user.role === "ADMIN" ? "Administrator" : "Citizen"}
-              </Badge>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
-                <span className="block truncate">{user.name}</span>
-                <span className="mt-1 block text-xs font-normal text-slate-500">
-                  {user.role === "ADMIN" ? "Administrator account" : "Citizen account"}
+                <span className="hidden max-w-36 truncate text-sm font-medium sm:inline">
+                  {user.name}
                 </span>
-              </DropdownMenuLabel>
-              {user.role === "CITIZEN" && (
-                <>
+                <Badge variant="outline" className="border-blue-200 bg-blue-50 text-[#0f2c52]">
+                  Citizen
+                </Badge>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>
+                    <span className="block truncate">{user.name}</span>
+                    <span className="mt-1 block text-xs font-normal text-slate-500">Citizen account</span>
+                  </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     nativeButton={false}
@@ -99,10 +92,19 @@ export function Navbar({ user, onMenuClick, menuOpen = false }: NavbarProps) {
                   >
                     My Profile
                   </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="hidden max-w-44 truncate text-sm font-medium text-slate-700 sm:inline">
+                {user.name}
+              </span>
+              <Badge variant="outline" className="border-amber-200 bg-amber-100 text-amber-800">
+                Administrator
+              </Badge>
+            </div>
+          )}
           <Button
             className="border-red-200 bg-red-50 text-red-700 hover:border-red-300 hover:bg-red-100 hover:text-red-800"
             disabled={isLoggingOut}

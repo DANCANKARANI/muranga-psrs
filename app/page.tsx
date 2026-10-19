@@ -130,11 +130,12 @@ export default async function HomePage() {
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-6 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <p className="text-slate-500">
-            © 2026 Murang&apos;a County Government <span aria-hidden="true">·</span>{" "}
-            <Link className="font-medium text-[#0f2c52] hover:underline" href="/track">
-              Track a request
-            </Link>
+            © 2026 Murang&apos;a County Government
           </p>
+          <nav aria-label="Public resources" className="flex flex-wrap gap-x-5 gap-y-2">
+            <Link className="font-medium text-[#0f2c52] hover:underline" href="/track">Track a request</Link>
+            <Link className="font-medium text-[#0f2c52] hover:underline" href="/transparency">Transparency Board</Link>
+          </nav>
         </div>
       </footer>
     </div>

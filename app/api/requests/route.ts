@@ -24,6 +24,7 @@ const attachmentTypes: Record<string, string> = {
 
 const requestSchema = z.object({
   category: z.enum(categories),
+  priority: z.enum(["LOW", "NORMAL", "HIGH", "CRITICAL"]).default("NORMAL"),
   location: z.string().trim().min(3).max(120),
   description: z.string().trim().min(10).max(2000),
   attachments: z
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
     .filter((value): value is File => value instanceof File && value.size > 0);
   const parsed = requestSchema.safeParse({
     category: formData.get("category"),
+    priority: formData.get("priority") ?? "NORMAL",
     location: formData.get("location"),
     description: formData.get("description"),
     attachments,
@@ -74,6 +76,23 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+
+  const duplicate = await prisma.request.findFirst({
+    where: {
+      category: parsed.data.category,
+      location: { equals: parsed.data.location, mode: "insensitive" },
+      status: "PENDING",
+    },
+    select: { id: true },
+  });
+  if (duplicate) {
+    return jsonError("A similar request already exists. Please upvote it instead.", 400);
+  }
+
+  const adminRecipients = await prisma.user.findMany({
+    where: { role: "ADMIN" },
+    select: { id: true },
+  });
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const trackingId = generateTrackingId();
@@ -109,17 +128,33 @@ export async function POST(request: Request) {
     }
 
     try {
-      const created = await prisma.request.create({
-        data: {
-          trackingId,
-          category: parsed.data.category,
-          location: parsed.data.location,
-          description: parsed.data.description,
-          attachments: { create: uploadedAttachments },
-          citizenId: session.id,
-          status: "PENDING",
-        },
-        select: { id: true, trackingId: true },
+      const created = await prisma.$transaction(async (transaction) => {
+        const newRequest = await transaction.request.create({
+          data: {
+            trackingId,
+            category: parsed.data.category,
+            priority: parsed.data.priority,
+            slaDeadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+            location: parsed.data.location,
+            description: parsed.data.description,
+            attachments: { create: uploadedAttachments },
+            citizenId: session.id,
+            status: "PENDING",
+          },
+          select: { id: true, trackingId: true, category: true },
+        });
+
+        if (adminRecipients.length > 0) {
+          await transaction.notification.createMany({
+            data: adminRecipients.map(({ id }) => ({
+              userId: id,
+              title: "New request submitted",
+              message: `${newRequest.category} request ${newRequest.trackingId} is awaiting review.`,
+              link: `/admin/requests/${newRequest.id}`,
+            })),
+          });
+        }
+        return newRequest;
       });
 
       revalidatePath("/dashboard", "layout");

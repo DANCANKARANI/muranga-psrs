@@ -5,10 +5,14 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   ClipboardList,
+  BarChart3,
   LayoutDashboard,
+  List,
   MapPin,
   PlusCircle,
+  Settings,
   UserRound,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import countyCrest from "@/public/logo.png";
@@ -16,9 +20,13 @@ import countyCrest from "@/public/logo.png";
 const sidebarIcons = {
   dashboard: LayoutDashboard,
   requests: ClipboardList,
+  list: List,
+  analytics: BarChart3,
+  settings: Settings,
   location: MapPin,
   create: PlusCircle,
   profile: UserRound,
+  community: UsersRound,
 } satisfies Record<string, LucideIcon>;
 
 export type SidebarIconName = keyof typeof sidebarIcons;
@@ -71,6 +79,7 @@ export function Sidebar({
             const isActive =
               activePath === href ||
               (href !== "/dashboard" &&
+                href !== "/admin" &&
                 href !== "/dashboard/requests/new" &&
                 activePath.startsWith(`${href}/`) &&
                 !(

@@ -3,10 +3,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { AlertTriangle, ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,24 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
+type SimilarRequest = {
+  id: string;
+  trackingId: string;
+  category: string;
+  location: string;
+  upvotes: number;
+  createdAt: string;
+  isOwner: boolean;
+  hasUpvoted: boolean;
+};
+
+function timeAgo(date: string) {
+  const days = Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000));
+  if (days === 0) return "today";
+  if (days === 1) return "1 day ago";
+  return `${days} days ago`;
+}
+
 const categories = [
   "Streetlight",
   "Water",
@@ -30,6 +49,7 @@ const categories = [
 
 const requestSchema = z.object({
   category: z.enum(categories, { error: "Select a service category." }),
+  priority: z.enum(["LOW", "NORMAL", "HIGH", "CRITICAL"]),
   location: z
     .string()
     .trim()
@@ -46,6 +66,7 @@ type RequestFormValues = z.infer<typeof requestSchema>;
 
 const responseSchema = z.object({
   success: z.boolean(),
+  id: z.string().optional(),
   trackingId: z.string().optional(),
   message: z.string().optional(),
   errors: z.record(z.string(), z.array(z.string())).optional(),
@@ -55,6 +76,10 @@ export function RequestForm() {
   const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [similarRequests, setSimilarRequests] = useState<SimilarRequest[]>([]);
+  const [isSearchingSimilar, setIsSearchingSimilar] = useState(false);
+  const [similarSearchError, setSimilarSearchError] = useState<string | null>(null);
+  const [supportingId, setSupportingId] = useState<string | null>(null);
   const {
     control,
     register,
@@ -62,9 +87,62 @@ export function RequestForm() {
     formState: { errors, isSubmitting },
   } = useForm<RequestFormValues>({
     resolver: zodResolver(requestSchema),
-    defaultValues: { location: "", description: "" },
+    defaultValues: { priority: "NORMAL", location: "", description: "" },
   });
   const description = useWatch({ control, name: "description" }) ?? "";
+  const category = useWatch({ control, name: "category" });
+  const location = useWatch({ control, name: "location" }) ?? "";
+
+  useEffect(() => {
+    const normalizedLocation = location.trim();
+    if (!category || normalizedLocation.length < 3) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setSimilarRequests([]);
+      setSimilarSearchError(null);
+      setIsSearchingSimilar(true);
+      try {
+        const params = new URLSearchParams({ category, location: normalizedLocation });
+        const response = await fetch(`/api/requests/similar?${params}`, { signal: controller.signal });
+        const result = (await response.json()) as { requests?: SimilarRequest[]; message?: string };
+        if (response.ok) {
+          setSimilarRequests(result.requests ?? []);
+        } else {
+          setSimilarSearchError(result.message ?? "Similar requests could not be checked.");
+        }
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setSimilarRequests([]);
+          setSimilarSearchError("Similar requests could not be checked. Please try again.");
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsSearchingSimilar(false);
+      }
+    }, 500);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [category, location]);
+
+  async function supportRequest(requestId: string) {
+    setSupportingId(requestId);
+    try {
+      const response = await fetch(`/api/requests/${requestId}/upvote`, { method: "POST" });
+      const result = (await response.json()) as { success?: boolean; message?: string };
+      if (!response.ok) throw new Error(result.message ?? "This request could not be supported.");
+      toast.success("You supported an existing request!");
+      router.push("/dashboard");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "This request could not be supported.");
+      setSupportingId(null);
+    }
+  }
 
   async function onSubmit(values: RequestFormValues) {
     setApiError(null);
@@ -89,6 +167,7 @@ export function RequestForm() {
 
     const data = new FormData();
     data.set("category", values.category);
+    data.set("priority", values.priority);
     data.set("location", values.location);
     data.set("description", values.description);
     attachments.forEach((file) => data.append("attachments", file));
@@ -100,7 +179,7 @@ export function RequestForm() {
       });
       const result = responseSchema.safeParse(await response.json());
 
-      if (!response.ok || !result.success || !result.data.success || !result.data.trackingId) {
+      if (!response.ok || !result.success || !result.data.success || !result.data.trackingId || !result.data.id) {
         const message = result.success
           ? result.data.message ?? "Your request could not be submitted."
           : "Your request could not be submitted. Check the form and try again.";
@@ -110,7 +189,7 @@ export function RequestForm() {
       }
 
       toast.success(`Request submitted. Tracking ID: ${result.data.trackingId}`);
-      router.push("/dashboard");
+      router.push(`/dashboard/requests/${result.data.id}?submitted=1`);
       router.refresh();
     } catch {
       setApiError("The service could not be reached. Please try again.");
@@ -151,6 +230,28 @@ export function RequestForm() {
         {errors.category && <p className="text-sm text-red-600">{errors.category.message}</p>}
       </div>
       <div className="space-y-2">
+        <Label htmlFor="priority">Priority</Label>
+        <Controller
+          control={control}
+          name="priority"
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={(value) => value && field.onChange(value)}>
+              <SelectTrigger id="priority" className="h-10 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="LOW">Low</SelectItem>
+                <SelectItem value="NORMAL">Normal</SelectItem>
+                <SelectItem value="HIGH">High</SelectItem>
+                <SelectItem value="CRITICAL">Critical</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        />
+        <p className="text-xs text-slate-500">Choose how urgently this issue needs attention.</p>
+      </div>
+      <p className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-900">New requests receive a 3-day resolution target. You can support community reports with an upvote after submission.</p>
+      <div className="space-y-2">
         <Label htmlFor="location">Location</Label>
         <Input
           id="location"
@@ -161,6 +262,39 @@ export function RequestForm() {
         />
         {errors.location && <p className="text-sm text-red-600">{errors.location.message}</p>}
       </div>
+      {category && location.trim().length >= 3 && isSearchingSimilar && <p aria-live="polite" className="text-xs text-slate-500">Checking for similar open requests…</p>}
+      {category && location.trim().length >= 3 && similarSearchError && <p aria-live="polite" className="text-sm text-red-700" role="status">{similarSearchError}</p>}
+      {category && location.trim().length >= 3 && similarRequests.length > 0 && (
+        <section aria-labelledby="similar-requests-title" className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4">
+          <div className="flex items-start gap-2">
+            <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-amber-700" />
+            <div>
+              <h2 id="similar-requests-title" className="font-semibold text-amber-950">We found similar requests in your area.</h2>
+              <p className="mt-1 text-sm text-amber-900">Support an existing report to help the county prioritize the issue.</p>
+            </div>
+          </div>
+          <ul className="space-y-2">
+            {similarRequests.slice(0, 3).map((request) => (
+              <li key={request.id} className="flex flex-col justify-between gap-3 rounded-lg border border-amber-200 bg-white p-3 sm:flex-row sm:items-center">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-900">{request.category} issue at {request.location}</p>
+                  <p className="mt-1 text-xs text-slate-600">{request.upvotes} {request.upvotes === 1 ? "upvote" : "upvotes"} · {timeAgo(request.createdAt)} · {request.trackingId}</p>
+                </div>
+                <Button
+                  className="shrink-0"
+                  disabled={isSubmitting || supportingId !== null || request.isOwner || request.hasUpvoted}
+                  onClick={() => void supportRequest(request.id)}
+                  type="button"
+                  variant="outline"
+                >
+                  {supportingId === request.id ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <ThumbsUp aria-hidden="true" className="size-4" />}
+                  {request.isOwner ? "Your request" : request.hasUpvoted ? "Already supported" : "Upvote & Support This"}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <div className="space-y-2">
         <Label htmlFor="description">Description</Label>
         <Textarea

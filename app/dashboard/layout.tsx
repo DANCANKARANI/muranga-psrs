@@ -10,6 +10,7 @@ const navigation: SidebarItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: "dashboard" },
   { label: "New request", href: "/dashboard/requests/new", icon: "create" },
   { label: "My requests", href: "/dashboard/requests", icon: "requests" },
+  { label: "Community requests", href: "/dashboard/community", icon: "community" },
   { label: "My Profile", href: "/dashboard/profile", icon: "profile" },
 ];
 

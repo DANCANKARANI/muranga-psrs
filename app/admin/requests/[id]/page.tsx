@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ThumbsUp } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AdminUpdateForm } from "@/components/admin/AdminUpdateForm";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PriorityBadge, type RequestPriority } from "@/components/shared/PriorityBadge";
 import { AttachmentLinks } from "@/components/shared/AttachmentLinks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,11 +30,12 @@ export default async function AdminRequestDetailPage({
       updates: { orderBy: { createdAt: "asc" } },
       attachments: {
         orderBy: { createdAt: "asc" },
-        select: { id: true, fileName: true },
+        select: { id: true, fileName: true, contentType: true },
       },
     },
   });
   if (!request) notFound();
+  const overdue = request.status !== "RESOLVED" && new Date().getTime() > request.slaDeadline.getTime();
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -44,11 +46,14 @@ export default async function AdminRequestDetailPage({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-slate-500">Tracking number</p>
-          <h1 className="mt-1 font-mono text-2xl font-bold tracking-wide text-[#0f2c52] sm:text-3xl">
-            {request.trackingId}
-          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="font-mono text-2xl font-bold tracking-wide text-[#0f2c52] sm:text-3xl">
+              {request.trackingId}
+            </h1>
+            {request.upvotes >= 5 && <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">Community Priority</span>}
+          </div>
         </div>
-        <StatusBadge status={request.status} />
+        <div className="flex flex-wrap items-center gap-2"><StatusBadge status={request.status} />{overdue && <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700"><AlertTriangle aria-hidden="true" className="size-3.5" />OVERDUE</span>}<PriorityBadge priority={request.priority as RequestPriority} /><span aria-label={`${request.upvotes} community upvotes`} className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-bold text-[#0f2c52]"><ThumbsUp aria-hidden="true" className="size-3.5" />{request.upvotes}</span></div>
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-3">
@@ -69,6 +74,10 @@ export default async function AdminRequestDetailPage({
                   <p className="mt-1 text-sm font-medium text-slate-900">{request.category}</p>
                 </div>
                 <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Priority</p>
+                  <div className="mt-1"><PriorityBadge priority={request.priority as RequestPriority} /></div>
+                </div>
+                <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Location</p>
                   <p className="mt-1 text-sm font-medium text-slate-900">{request.location}</p>
                 </div>
@@ -80,6 +89,7 @@ export default async function AdminRequestDetailPage({
                   requestId={request.id}
                   attachments={request.attachments}
                   hasLegacyAttachment={Boolean(request.attachment)}
+                  legacyFileName={request.attachment}
                 />
               </div>
               <Separator />
@@ -106,7 +116,10 @@ export default async function AdminRequestDetailPage({
                           <StatusBadge status={update.status} />
                           <time className="text-xs text-slate-500" dateTime={update.createdAt.toISOString()}>{formatDate(update.createdAt)}</time>
                         </div>
-                        <p className="mt-2 text-xs text-slate-500">Updated by {update.adminName}</p>
+                        <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                          Updated by {update.adminName}
+                          {update.isInternal && <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 font-semibold text-amber-900">Internal note · hidden from citizen</span>}
+                        </p>
                         <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">{update.note}</p>
                       </div>
                     </li>
