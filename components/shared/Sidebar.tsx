@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   ClipboardList,
   BarChart3,
+  FileText,
   LayoutDashboard,
   List,
   MapPin,
@@ -27,6 +28,8 @@ const sidebarIcons = {
   create: PlusCircle,
   profile: UserRound,
   community: UsersRound,
+  users: UsersRound,
+  reports: FileText,
 } satisfies Record<string, LucideIcon>;
 
 export type SidebarIconName = keyof typeof sidebarIcons;

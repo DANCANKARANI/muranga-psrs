@@ -1,15 +1,12 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Manrope } from "next/font/google";
 import countyCrest from "@/public/logo.png";
-
-const manrope = Manrope({ subsets: ["latin"], display: "swap" });
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div
-      className={`${manrope.className} flex min-h-screen flex-col bg-slate-50 text-slate-900`}
+      className="flex min-h-screen flex-col bg-slate-50 text-slate-900"
     >
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-5 py-5 sm:px-8">

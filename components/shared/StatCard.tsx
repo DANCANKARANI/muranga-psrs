@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 interface StatCardProps {
   label: string;
-  value: number;
+  value: number | string;
   icon: LucideIcon;
   tone?: "navy" | "amber" | "green" | "red" | "slate";
   description?: string;

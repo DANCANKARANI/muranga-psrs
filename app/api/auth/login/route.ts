@@ -29,13 +29,20 @@ export async function POST(request: Request) {
 
   const user = await prisma.user.findUnique({
     where: { email: parsed.data.email.toLowerCase() },
-    select: { id: true, email: true, name: true, password: true, role: true },
+    select: { id: true, email: true, name: true, password: true, role: true, status: true },
   });
 
   if (!user || !(await verifyPassword(parsed.data.password, user.password))) {
     return Response.json(
       { success: false, message: "Invalid email or password" },
       { status: 401 },
+    );
+  }
+
+  if (user.status === "SUSPENDED") {
+    return Response.json(
+      { success: false, message: "Your account has been suspended. Please contact the county administrator." },
+      { status: 403 },
     );
   }
 

@@ -1,12 +1,13 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getReportRangeStart, parseReportRange } from "@/lib/report-date-range";
 
 function escapeCsv(value: string): string {
   const safeValue = /^[=+@\-\t\r]/.test(value) ? `'${value}` : value;
   return `"${safeValue.replaceAll('"', '""')}"`;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session) {
     return Response.json({ success: false, message: "Authentication required." }, { status: 401 });
@@ -15,7 +16,11 @@ export async function GET() {
     return Response.json({ success: false, message: "Administrator access required." }, { status: 403 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const range = parseReportRange(searchParams.get("range") ?? undefined);
+  const rangeStart = getReportRangeStart(range, new Date());
   const requests = await prisma.request.findMany({
+    where: rangeStart ? { createdAt: { gte: rangeStart } } : {},
     orderBy: { createdAt: "desc" },
     select: {
       trackingId: true,

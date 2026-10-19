@@ -8,7 +8,7 @@ interface CategoryDatum { category: string; count: number }
 export function CategoryChart({ data }: { data: CategoryDatum[] }) {
   return (
     <Card className="min-w-0">
-      <CardHeader className="pb-2"><CardTitle className="text-base">Requests by service</CardTitle><p className="text-xs text-slate-500">Volume across all categories</p></CardHeader>
+      <CardHeader className="pb-2"><CardTitle className="text-base">Requests by service</CardTitle><p className="text-xs text-slate-500">Requests within the selected reporting range</p></CardHeader>
       <CardContent className="px-2 pb-4 sm:px-4">
         {data.length ? <div className="h-[300px] w-full"><ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 10, right: 8, left: -18, bottom: 8 }}>

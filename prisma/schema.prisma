@@ -15,6 +15,7 @@ model User {
   password      String
   phone         String?
   role          Role           @default(CITIZEN)
+  status        String         @default("ACTIVE")
   requests      Request[]
   notifications Notification[]
   createdAt     DateTime       @default(now())

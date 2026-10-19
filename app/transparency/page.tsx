@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { Activity, ArrowLeft, CheckCircle2, ClipboardList, MapPin, ThumbsUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
@@ -7,6 +8,8 @@ import { formatDate, formatTimeAgo } from "@/lib/utils";
 export const instant = false;
 
 export default async function TransparencyPage() {
+  await connection();
+
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
