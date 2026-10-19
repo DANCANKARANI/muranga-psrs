@@ -80,13 +80,13 @@ export async function POST(request: Request) {
   const duplicate = await prisma.request.findFirst({
     where: {
       category: parsed.data.category,
-      location: { equals: parsed.data.location, mode: "insensitive" },
+      location: parsed.data.location,
       status: "PENDING",
     },
     select: { id: true },
   });
   if (duplicate) {
-    return jsonError("A similar request already exists. Please upvote it instead.", 400);
+    return jsonError("A similar pending request already exists. Please upvote the existing request instead.", 400);
   }
 
   const adminRecipients = await prisma.user.findMany({

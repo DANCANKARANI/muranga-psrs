@@ -13,14 +13,14 @@ export async function GET(request: Request) {
     return Response.json({ success: false, message: "A category and valid location are required." }, { status: 400 });
   }
 
-  const requests = await prisma.request.findMany({
+  const activeRequests = await prisma.request.findMany({
     where: {
       status: { in: ["PENDING", "IN_PROGRESS"] },
       category,
       location: { contains: location, mode: "insensitive" },
     },
     orderBy: [{ upvotes: "desc" }, { createdAt: "desc" }],
-    take: 5,
+    take: 3,
     select: {
       id: true,
       trackingId: true,
@@ -32,12 +32,26 @@ export async function GET(request: Request) {
       upvotedBy: true,
     },
   });
+  const resolvedRequest = await prisma.request.findFirst({
+    where: {
+      status: "RESOLVED",
+      category,
+      location: { contains: location, mode: "insensitive" },
+    },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      category: true,
+      location: true,
+      updatedAt: true,
+    },
+  });
 
   return Response.json({
-    requests: requests.map(({ citizenId, upvotedBy, ...item }) => ({
+    activeDuplicates: activeRequests.map(({ citizenId, upvotedBy, ...item }) => ({
       ...item,
       isOwner: citizenId === session.id,
       hasUpvoted: upvotedBy.includes(session.id),
     })),
+    resolvedHistory: resolvedRequest,
   });
 }

@@ -31,6 +31,12 @@ type SimilarRequest = {
   hasUpvoted: boolean;
 };
 
+type ResolvedHistory = {
+  category: string;
+  location: string;
+  updatedAt: string;
+};
+
 function timeAgo(date: string) {
   const days = Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 86_400_000));
   if (days === 0) return "today";
@@ -76,7 +82,8 @@ export function RequestForm() {
   const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
-  const [similarRequests, setSimilarRequests] = useState<SimilarRequest[]>([]);
+  const [activeDuplicates, setActiveDuplicates] = useState<SimilarRequest[]>([]);
+  const [resolvedHistory, setResolvedHistory] = useState<ResolvedHistory | null>(null);
   const [isSearchingSimilar, setIsSearchingSimilar] = useState(false);
   const [similarSearchError, setSimilarSearchError] = useState<string | null>(null);
   const [supportingId, setSupportingId] = useState<string | null>(null);
@@ -101,21 +108,28 @@ export function RequestForm() {
 
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
-      setSimilarRequests([]);
+      setActiveDuplicates([]);
+      setResolvedHistory(null);
       setSimilarSearchError(null);
       setIsSearchingSimilar(true);
       try {
         const params = new URLSearchParams({ category, location: normalizedLocation });
         const response = await fetch(`/api/requests/similar?${params}`, { signal: controller.signal });
-        const result = (await response.json()) as { requests?: SimilarRequest[]; message?: string };
+        const result = (await response.json()) as {
+          activeDuplicates?: SimilarRequest[];
+          resolvedHistory?: ResolvedHistory | null;
+          message?: string;
+        };
         if (response.ok) {
-          setSimilarRequests(result.requests ?? []);
+          setActiveDuplicates(result.activeDuplicates ?? []);
+          setResolvedHistory(result.resolvedHistory ?? null);
         } else {
           setSimilarSearchError(result.message ?? "Similar requests could not be checked.");
         }
       } catch (error) {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
-          setSimilarRequests([]);
+          setActiveDuplicates([]);
+          setResolvedHistory(null);
           setSimilarSearchError("Similar requests could not be checked. Please try again.");
         }
       } finally {
@@ -264,17 +278,17 @@ export function RequestForm() {
       </div>
       {category && location.trim().length >= 3 && isSearchingSimilar && <p aria-live="polite" className="text-xs text-slate-500">Checking for similar open requests…</p>}
       {category && location.trim().length >= 3 && similarSearchError && <p aria-live="polite" className="text-sm text-red-700" role="status">{similarSearchError}</p>}
-      {category && location.trim().length >= 3 && similarRequests.length > 0 && (
+      {category && location.trim().length >= 3 && activeDuplicates.length > 0 && (
         <section aria-labelledby="similar-requests-title" className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-4">
           <div className="flex items-start gap-2">
             <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-amber-700" />
             <div>
-              <h2 id="similar-requests-title" className="font-semibold text-amber-950">We found similar requests in your area.</h2>
+              <h2 id="similar-requests-title" className="font-semibold text-amber-950">Wait! We found similar active requests in your area.</h2>
               <p className="mt-1 text-sm text-amber-900">Support an existing report to help the county prioritize the issue.</p>
             </div>
           </div>
           <ul className="space-y-2">
-            {similarRequests.slice(0, 3).map((request) => (
+            {activeDuplicates.map((request) => (
               <li key={request.id} className="flex flex-col justify-between gap-3 rounded-lg border border-amber-200 bg-white p-3 sm:flex-row sm:items-center">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-900">{request.category} issue at {request.location}</p>
@@ -294,6 +308,14 @@ export function RequestForm() {
             ))}
           </ul>
         </section>
+      )}
+      {category && location.trim().length >= 3 && activeDuplicates.length === 0 && resolvedHistory && (
+        <div className="flex gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-950" role="status">
+          <span className="mt-0.5 size-2 shrink-0 rounded-full bg-blue-600" aria-hidden="true" />
+          <p className="text-sm leading-6">
+            Good news: A similar {resolvedHistory.category} issue at {resolvedHistory.location} was recently resolved. You can still submit a new report if the issue has returned.
+          </p>
+        </div>
       )}
       <div className="space-y-2">
         <Label htmlFor="description">Description</Label>
