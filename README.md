@@ -4,7 +4,7 @@ A secure portal for Murang'a County residents to report municipal service issues
 
 ## Demo Accounts
 
-Demo accounts are not created by default. For a local interview/demo environment, set `DEMO_SEED_ENABLED=true` and provide a unique `DEMO_ACCOUNT_PASSWORD` of at least 12 characters in `.env`, then run `npx prisma db seed`. This seed is blocked in production. The accounts are `admin@muranga.go.ke` and `citizen@muranga.go.ke`; both use the configured demo password. Disable/remove them before using a shared or production database.
+Demo accounts are not created by default. To create or reset them, set `DEMO_SEED_ENABLED=true` and a `DEMO_ACCOUNT_PASSWORD` of at least 8 characters in `.env`, then run `npx prisma db seed` outside a production runtime. This command can target your Supabase database through the `DATABASE_URL` in `.env`. The accounts are `admin@muranga.go.ke` and `citizen@muranga.go.ke`, and both use the configured password. If Vercel should use those same accounts, its `DATABASE_URL` must point to the same Supabase project and database. The seed stores a password hash in Supabase; changing `DEMO_ACCOUNT_PASSWORD` in Vercel only changes the password displayed on the login page and does not change that hash. Keep the Vercel value in sync with the seeded password, or rerun the seed from a non-production environment connected to the same demo database to reset it. Redeploy after changing Vercel variables so the login page displays the updated value. The password is publicly displayed on role-specific login pages, so use only disposable demo accounts and data; the admin account has full administrator access.
 
 ## Features
 
@@ -18,7 +18,7 @@ Demo accounts are not created by default. For a local interview/demo environment
 
 ### Admin
 
-- Monitor request totals, the 24-hour pending queue, SLA-overdue cases, recent activity, and community upvotes.
+- Monitor request totals, the SLA-overdue queue, recent reports, and community upvotes.
 - Search reports by tracking ID, citizen, or location; inspect full timelines and attachments; and update request status with public or internal notes.
 - Manage user accounts, including suspending or reactivating accounts, and review request counts by user.
 - Use the Reports Dashboard for date-filtered metrics, category and submission trends, overdue totals, and CSV export.
@@ -54,8 +54,23 @@ flowchart LR
 ```mermaid
 erDiagram
     User ||--o{ Request : submits
+    User ||--o{ Notification : receives
     Request ||--o{ RequestUpdate : receives
     Request ||--o{ RequestAttachment : includes
+
+    SystemSetting {
+        string key PK
+        string value
+        datetime updatedAt
+    }
+    Notification {
+        string id PK
+        string userId FK
+        string title
+        string message
+        boolean isRead
+        datetime createdAt
+    }
 
     User {
         string id PK
@@ -100,7 +115,7 @@ erDiagram
 3. Copy `.env.example` to `.env`, then set the database URLs, Supabase credentials, and a random `JWT_SECRET` (at least 32 bytes; `openssl rand -base64 48`). Never commit `.env`.
 4. Create a **private** Supabase Storage bucket named `request-attachments`. The server streams files through an authenticated route.
 5. Apply checked-in migrations with `npx prisma migrate deploy`. After pulling schema updates, regenerate the Prisma client with `npx prisma generate`.
-6. To create local demo users, set `DEMO_SEED_ENABLED=true` and a unique `DEMO_ACCOUNT_PASSWORD` of at least 12 characters, then run `npm run db:seed`. A role-specific login link shows that role's demo email and password; plain `/login` shows no demo credentials. The configured demo password is displayed on the role-specific login page, so only use a password for dedicated demo accounts with no real or sensitive access. Do not use demo users or passwords for real production access.
+6. To create demo users, set `DEMO_SEED_ENABLED=true` and `DEMO_ACCOUNT_PASSWORD` (at least 8 characters), then run `npm run db:seed` outside a production runtime. If you use Supabase for both local development and Vercel, this creates the accounts in that shared Supabase database. A role-specific login link shows that role's demo email and password; plain `/login` shows no demo credentials.
 7. Start the application with `npm run dev` and visit `http://localhost:3000`.
 
 ## Environment Variables
@@ -113,8 +128,8 @@ erDiagram
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase publishable/anonymous key. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only key for privileged Storage operations; never expose it in client code. |
 | `JWT_SECRET` | Random secret of at least 32 bytes used to sign session tokens. |
-| `DEMO_SEED_ENABLED` | Set to `true` only for non-production demo databases. Defaults to disabled. |
-| `DEMO_ACCOUNT_PASSWORD` | Unique password (12+ characters) used only when explicitly seeding demo users. |
+| `DEMO_SEED_ENABLED` | Set to `true` only when explicitly seeding demo accounts outside production. Defaults to disabled. |
+| `DEMO_ACCOUNT_PASSWORD` | Password (8+ characters) used when explicitly seeding demo users; shown on role-specific login pages. |
 
 Do not commit `.env` or production credentials.
 

@@ -8,8 +8,8 @@ async function main() {
     throw new Error("Demo seed is disabled. Set DEMO_SEED_ENABLED=true outside production to create demo users.");
   }
   const demoPassword = process.env.DEMO_ACCOUNT_PASSWORD;
-  if (!demoPassword || demoPassword.length < 12) {
-    throw new Error("Set DEMO_ACCOUNT_PASSWORD to a unique password of at least 12 characters.");
+  if (!demoPassword || demoPassword.length < 8) {
+    throw new Error("Set DEMO_ACCOUNT_PASSWORD to a password of at least 8 characters.");
   }
   const password = await hash(demoPassword, 12);
 

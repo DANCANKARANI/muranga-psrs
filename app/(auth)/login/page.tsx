@@ -15,9 +15,9 @@ export default async function LoginPage({
     roleParam === "ADMIN" || roleParam === "CITIZEN" ? roleParam : undefined;
   const demoPassword = process.env.DEMO_ACCOUNT_PASSWORD;
   const demoAccounts = intendedRole === "ADMIN"
-    ? [{ label: "Admin", email: "admin@muranga.go.ke" }]
+    ? [{ email: "admin@muranga.go.ke" }]
     : intendedRole === "CITIZEN"
-      ? [{ label: "Citizen", email: "citizen@muranga.go.ke" }]
+      ? [{ email: "citizen@muranga.go.ke" }]
       : [];
 
   return (
