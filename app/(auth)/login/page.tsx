@@ -13,25 +13,27 @@ export default async function LoginPage({
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
   const intendedRole: UserRole | undefined =
     roleParam === "ADMIN" || roleParam === "CITIZEN" ? roleParam : undefined;
+  const demoPassword = process.env.DEMO_ACCOUNT_PASSWORD;
+  const demoAccounts = intendedRole === "ADMIN"
+    ? [{ label: "Admin", email: "admin@muranga.go.ke" }]
+    : intendedRole === "CITIZEN"
+      ? [{ label: "Citizen", email: "citizen@muranga.go.ke" }]
+      : [];
 
   return (
     <div className="space-y-4">
-      <Card className="border-slate-200 bg-slate-50 shadow-none">
-        <CardContent className="space-y-1.5 p-3 text-xs text-slate-600">
-          <p className="font-semibold text-slate-700">Demo credentials</p>
-          <p>
-            Admin: <span className="font-mono">admin@muranga.go.ke</span> /{" "}
-            <span className="font-mono">Demo1234!</span>
-          </p>
-          <p>
-            Citizen: <span className="font-mono">citizen@muranga.go.ke</span> /{" "}
-            <span className="font-mono">Demo1234!</span>
-          </p>
-        </CardContent>
-      </Card>
-      <p className="-mt-2 text-xs italic text-slate-500">
-        The system routes you to the correct dashboard based on your role.
-      </p>
+      {demoPassword && demoAccounts.length > 0 && (
+        <Card className="border-slate-200 bg-slate-50 shadow-none">
+          <CardContent className="space-y-1.5 p-3 text-xs text-slate-600">
+            {demoAccounts.map((account) => (
+              <div className="space-y-1" key={account.email}>
+                <p><span className="font-semibold text-slate-700">Demo email:</span>{" "}<span className="font-mono">{account.email}</span></p>
+                <p><span className="font-semibold text-slate-700">Demo password:</span>{" "}<span className="font-mono">{demoPassword}</span></p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
       <LoginForm intendedRole={intendedRole} />
     </div>
   );
